@@ -40,19 +40,31 @@ class BsmModel:
         ''' 
         <-- PUT your implementation here
         '''
-        return 0
+        vol_std = self.vol * np.sqrt(texp)
+        d1 = np.log(spot/strike)/vol_std + 0.5*vol_std
+        d2 = d1 - vol_std
+        delta_re = cp * ss.norm.cdf(cp*d2)
+        return delta_re
 
     def vega(self, strike, spot, vol, texp, cp=1):
         ''' 
         <-- PUT your implementation here
         '''
-        return 0
+        vol_std = self.vol * np.sqrt(texp)
+        d1 = np.log(spot/strike)/vol_std + 0.5*vol_std
+        # d2 = d1 - vol_std
+        vega_re = spot * np.sqrt(texp) * ss.norm.pdf(d1)
+        return vega_re
 
     def gamma(self, strike, spot, vol, texp, cp=1):
         ''' 
         <-- PUT your implementation here
         '''
-        return 0
+        vol_std = self.vol * np.sqrt(texp)
+        d1 = np.log(spot/strike)/vol_std + 0.5*vol_std
+        # d2 = d1 - vol_std
+        gamma_re = ss.norm.pdf(d1)/(spot * vol_std)
+        return gamma_re
 
     def impvol(self, price, strike, spot, texp, cp=1):
         iv_func = lambda _vol: \

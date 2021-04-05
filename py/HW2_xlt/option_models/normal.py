@@ -23,7 +23,6 @@ def normal_formula(strike, spot, vol, texp, intr=0.0, divr=0.0, cp=1):
     return price
 
 class NormalModel:
-    
     vol, intr, divr = None, None, None
     
     def __init__(self, vol, intr=0, divr=0):
@@ -37,23 +36,35 @@ class NormalModel:
     def delta(self, strike, spot, vol, texp, intr=0.0, divr=0.0, cp=1):
         ''' 
         <-- PUT your implementation here
+        
         '''
-        return 0
+        vol_std = np.fmax(vol * np.sqrt(texp), 1.0e-16)
+        dn = (spot-strike)/vol_std
+        delta_re = cp* ss.norm.cdf(cp * dn)
+        return delta_re
 
     def vega(self, strike, spot, vol, texp, intr=0.0, divr=0.0, cp=1):
         ''' 
         <-- PUT your implementation here
         '''
-        return 0
+        vol_std = np.fmax(vol * np.sqrt(texp), 1.0e-16)
+        dn = (spot-strike)/vol_std
+        vega_re = np.sqrt(texp) * ss.norm.pdf(dn)
+        return vega_re
 
     def gamma(self, strike, spot, vol, texp, intr=0.0, divr=0.0, cp=1):
         ''' 
         <-- PUT your implementation here
         '''
-        return 0
+        vol_std = np.fmax(vol * np.sqrt(texp), 1.0e-16)
+        dn = (spot-strike)/vol_std
+        gamma_re = ss.norm.pdf(dn)/(vol_std *np.sqrt(texp))
+        return gamma_re
 
     def impvol(self, price, strike, spot, texp, cp=1):
         ''' 
         <-- PUT your implementation here
         '''
-        return 0
+        func = lambda _vol: normal_formula(strike, spot, _vol, texp, self.intr, self.divr, cp) - price
+        imp_vol = sopt.brentq(func, 0, 10)
+        return imp_vol
