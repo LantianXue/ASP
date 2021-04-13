@@ -46,27 +46,31 @@ class ModelBsmMC:
         Generate paths for vol and price first. Then get prices (vector) for all strikes
         You may fix the random number seed
         '''
-        n_inter = 100000
-        delta_t = texp/n_inter
-        np.random.seed(12345)
-        z1 = np.random.normal(0,1,n_inter)
-        np.random.seed(4567)
-        z2 = np.random.normal(0,1,n_inter)
-        w1 = self.rho*z1 + np.sqrt(1-np.power(self.rho,2))*z2
+        n_interval = 100
+        n_iter =10000
+        delta_t = texp/n_interval
         prices = []
-        for s in strike:
-            p = np.log(spot)
-            cp = []
-            si = self.sigma
-            for i in range(1,n_inter+1):
-                p = p + si * w1[i-1]* np.sqrt(delta_t) - 0.5*np.power(si,2)*delta_t
-                si = si * np.exp(self.vov*np.sqrt(delta_t)*z1[i-1]-0.5*np.power(self.vov,2)*delta_t)
-                c = max(np.exp(p)-s,0)
-                cp.append(c)
-            price = np.mean(cp)
-            prices.append(price)
-        prices = np.array(prices)
-        return prices
+        np.random.seed(12345)
+        # get the whole price path and sigma path every iteration
+        for i in range(n_iter):
+            z1 = np.random.randn(n_interval)
+            z2 = np.random.randn(n_interval)
+            w1 = self.rho*z1 + np.sqrt(1-np.power(self.rho,2))*z2
+            sis = np.exp(self.vov*np.sqrt(delta_t)*z1-0.5*np.power(self.vov,2)*delta_t)
+            sis[1:]=sis[:-1]
+            sis[0] = self.sigma
+            sis = np.cumprod(sis)
+            deltap = np.exp(sis*np.sqrt(delta_t)*w1-0.5*np.power(sis,2)*delta_t)
+            deltap[0]*=spot
+            pts = np.cumprod(deltap)
+            prices.append(pts[-1])
+        strikes = np.array([strike]*n_iter).T
+        callp = -strikes+prices
+        callp = np.where(callp>0,callp,0)
+        # record the call price among all our MC
+        self.cprice_paths = callp
+        finalp = callp.mean(axis = 1)
+        return finalp
 
 '''
 MC model class for Beta=0
@@ -99,27 +103,31 @@ class ModelNormalMC:
         Generate paths for vol and price first. Then get prices (vector) for all strikes
         You may fix the random number seed
         '''
-        n_inter = 10000
-        delta_t = texp/n_inter
-        np.random.seed(12345)
-        z1 = np.random.normal(0,1,n_inter)
-        np.random.seed(4567)
-        z2 = np.random.normal(0,1,n_inter)
-        w1 = self.rho*z1 + np.sqrt(1-np.power(self.rho,2))*z2
+        n_interval = 100
+        n_iter =10000
+        delta_t = texp/n_interval
         prices = []
-        for s in strike:
-            p = spot
-            cp = []
-            si = self.sigma
-            for i in range(n_inter+1):
-                p = p + si * w1[i-1]* np.sqrt(delta_t)
-                si = si * np.exp(self.vov*np.sqrt(delta_t)*z1[i-1]-0.5*np.power(self.vov,2)*delta_t)
-                c = max(p-s,0)
-                cp.append(c)
-            price = np.mean(cp)
-            prices.append(price)
-        prices = np.array(prices)
-        return prices
+        np.random.seed(12345)
+        # get the whole price path and sigma path every iteration
+        for i in range(n_iter):
+            z1 = np.random.randn(n_interval)
+            z2 = np.random.randn(n_interval)
+            w1 = self.rho*z1 + np.sqrt(1-np.power(self.rho,2))*z2
+            sis = np.exp(self.vov*np.sqrt(delta_t)*z1-0.5*np.power(self.vov,2)*delta_t)
+            sis[1:]=sis[:-1]
+            sis[0] = self.sigma
+            sis = np.cumprod(sis)
+            deltap = sis*np.sqrt(delta_t)*w1
+            deltap[0]+=spot
+            pts = np.cumsum(deltap)
+            prices.append(pts[-1])
+        strikes = np.array([strike]*n_iter).T
+        callp = -strikes+prices
+        callp = np.where(callp>0,callp,0)
+         # record the call price among all our MC
+        self.cprice_paths = callp
+        finalp = callp.mean(axis = 1)
+        return finalp
 
 '''
 Conditional MC model class for Beta=1
@@ -157,25 +165,28 @@ class ModelBsmCondMC:
         Then get prices (vector) for all strikes
         You may fix the random number seed
         '''
-        n_inter = 100000
-        delta_t = texp/n_inter
+        n_interval = 100
+        n_iter =10000
+        delta_t = texp/n_interval
+        prices = []
         np.random.seed(12345)
-        z1 = np.random.normal(0,1,n_inter)
-        sis = []
-        sis.append(self.sigma)
-        si = self.sigma
-        for i in range(1,n_inter+1):
-            si =  si * np.exp(self.vov*np.sqrt(delta_t)*z1[i-1]-0.5*np.power(self.vov,2)*delta_t)
-            sis.append(si)
-        it = 0
-        for i in sis:
-            it += 2*np.power(i,2)
-        it = it-sis[0]-sis[-1]+2*sis[1]+2*sis[-2]
-        it = it/6/n_inter
-        spot_now = spot*np.exp(self.rho*(sis[-1]-sis[0])/self.vov-0.5*np.power(self.rho*sis[0],2)*texp*it)
-        vol_now = sis[0]*np.sqrt((1-np.power(self.rho,2))*it)
-        prices = bsm.price(strike,spot_now,texp,vol_now)
-        return prices
+         # get a whole sigma path every iteration
+        for i in range(n_iter):
+            z1 = np.random.randn(n_interval)
+            sis = np.exp(self.vov*np.sqrt(delta_t)*z1-0.5*np.power(self.vov,2)*delta_t)
+            sis[1:]=sis[:-1]
+            sis[0] = self.sigma
+            sis = np.cumprod(sis)
+            var = np.power(sis,2)/sis[0]**2
+            it = var.mean()
+            s0 = spot*np.exp(self.rho/self.vov*(sis[-1]-sis[0])-0.5*np.power(self.rho*sis[0],2)*texp*it)
+            sigma_bs = sis[0]*np.sqrt((1-self.rho**2)*it)
+            prices.append(bsm.price(strike,s0,texp,sigma_bs))
+        prices = np.array(prices)
+         # record the call price among our CMC
+        self.cprice_paths = prices
+        finalp = prices.mean(axis = 0)
+        return finalp
 '''
 Conditional MC model class for Beta=0
 '''
@@ -208,22 +219,26 @@ class ModelNormalCondMC:
         Generate paths for vol only. Then compute integrated variance and normal price.
         You may fix the random number seed
         '''
-        n_inter = 10000
-        delta_t = texp/n_inter
+        n_interval = 100
+        n_iter =10000
+        delta_t = texp/n_interval
+        prices = []
         np.random.seed(12345)
-        z1 = np.random.normal(0,1,n_inter)
-        sis = []
-        sis.append(self.sigma)
-        si = self.sigma
-        for i in range(1,n_inter+1):
-            si =  si * np.exp(self.vov*np.sqrt(delta_t)*z1[i-1]-0.5*np.power(self.vov,2)*delta_t)
-            sis.append(si)
-        it = 0
-        for i in sis:
-            it += 2*np.power(i,2)
-        it = it-sis[0]-sis[-1]
-        it = it/2/n_inter
-        spot_now = spot+self.rho*(sis[-1]-sis[0])/self.vov
-        vol_now = sis[0]*np.sqrt((1-np.power(self.rho,2))*it)
-        prices = normal.price(strike,spot_now,texp,vol_now)
-        return prices
+         # get a whole sigma path every iteration
+        for i in range(n_iter):
+            z1 = np.random.randn(n_interval)
+            sis = np.exp(self.vov*np.sqrt(delta_t)*z1-0.5*np.power(self.vov,2)*delta_t)
+            sis[1:]=sis[:-1]
+            sis[0] = self.sigma
+            sis = np.cumprod(sis)
+            var = np.power(sis,2)/sis[0]**2
+            it = var.mean()
+            s0 = spot+self.rho/self.vov*(sis[-1]-sis[0])
+            sigma_nm = sis[0]*np.sqrt((1-self.rho**2)*it)
+            prices.append(normal.price(strike,s0,texp,sigma_nm))
+        prices = np.array(prices)
+        # record all the prices among our CMC
+        self.cprice_paths = prices
+        finalp = prices.mean(axis = 0)
+        return finalp
+       
