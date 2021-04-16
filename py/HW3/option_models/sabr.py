@@ -40,7 +40,7 @@ class ModelBsmMC:
         '''
         return 0
     
-    def price(self, strike, spot, texp=None, sigma=None, cp=1):
+    def price(self, strike, spot, texp=None, sigma=None, cp=1,random_seed = 12345):
         '''
         Your MC routine goes here
         Generate paths for vol and price first. Then get prices (vector) for all strikes
@@ -50,7 +50,7 @@ class ModelBsmMC:
         n_iter =10000
         delta_t = texp/n_interval
         prices = []
-        np.random.seed(12345)
+        np.random.seed(random_seed)
         # get the whole price path and sigma path every iteration
         for i in range(n_iter):
             z1 = np.random.randn(n_interval)
@@ -97,7 +97,7 @@ class ModelNormalMC:
         '''
         return 0
         
-    def price(self, strike, spot, texp=None, sigma=None, cp=1):
+    def price(self, strike, spot, texp=None, sigma=None, cp=1, random_seed = 12345):
         '''
         Your MC routine goes here
         Generate paths for vol and price first. Then get prices (vector) for all strikes
@@ -107,7 +107,7 @@ class ModelNormalMC:
         n_iter =10000
         delta_t = texp/n_interval
         prices = []
-        np.random.seed(12345)
+        np.random.seed(random_seed)
         # get the whole price path and sigma path every iteration
         for i in range(n_iter):
             z1 = np.random.randn(n_interval)
@@ -158,7 +158,7 @@ class ModelBsmCondMC:
         '''
         return 0
     
-    def price(self, strike, spot, texp=None, cp=1):
+    def price(self, strike, spot, texp=None, cp=1,random_seed = 12345):
         '''
         Your MC routine goes here
         Generate paths for vol only. Then compute integrated variance and BSM price.
@@ -169,7 +169,7 @@ class ModelBsmCondMC:
         n_iter =10000
         delta_t = texp/n_interval
         prices = []
-        np.random.seed(12345)
+        np.random.seed(random_seed)
          # get a whole sigma path every iteration
         for i in range(n_iter):
             z1 = np.random.randn(n_interval)
@@ -213,7 +213,7 @@ class ModelNormalCondMC:
         '''
         return 0
         
-    def price(self, strike, spot, texp=None, cp=1):
+    def price(self, strike, spot, texp=None, cp=1,random_seed =12345):
         '''
         Your MC routine goes here
         Generate paths for vol only. Then compute integrated variance and normal price.
@@ -223,7 +223,7 @@ class ModelNormalCondMC:
         n_iter =10000
         delta_t = texp/n_interval
         prices = []
-        np.random.seed(12345)
+        np.random.seed(random_seed)
          # get a whole sigma path every iteration
         for i in range(n_iter):
             z1 = np.random.randn(n_interval)
